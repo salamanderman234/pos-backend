@@ -58,4 +58,12 @@ var (
 		Status:  http.StatusUnauthorized,
 		Message: "Invalid access token",
 	}
+	ErrTooLarge = Response{
+		Status:  http.StatusRequestEntityTooLarge,
+		Message: "Too large",
+	}
+	ErrInvalidMimeType = Response{
+		Status:  http.StatusUnsupportedMediaType,
+		Message: "Invalid mime type for file",
+	}
 )

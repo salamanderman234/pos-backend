@@ -10,9 +10,12 @@ import (
 )
 
 // app
+var logDriver LogDriverEnum
+var logService string
 var debug bool
 var version string
 var applicationKey []byte
+var applicationName string
 
 // mailer
 var mailer *gomail.Dialer
@@ -33,10 +36,17 @@ func StartSetup() {
 	if err != nil {
 		panic(err)
 	}
+	// log setup
+	logDriver = LogDriverEnum(viper.GetString("LOG_DRIVER"))
+	logService = viper.GetString("LOG_SERVICE")
+	if logDriver == LogDriverEnum_EXTERNAL_DATABASE {
+		logConnectDB()
+	}
 	// application setup
 	GenerateApplicationKey()
 	debug = viper.GetBool("APP_DEBUG")
 	version = viper.GetString("APP_VERSION")
+	applicationName = viper.GetString("APP_NAME")
 	// sanitizer
 	sanitizer = bluemonday.UGCPolicy()
 	// validator
@@ -47,8 +57,16 @@ func StartSetup() {
 	// connect db
 	connectDB()
 	// setup worker
-	WorkerPool = NewWorkerPool(10)
+	WorkerPool = NewWorkerPool(APP_WORKER_NUM)
 	WorkerPool.Start()
+}
+
+func LogDriver() LogDriverEnum {
+	return logDriver
+}
+
+func LogService() string {
+	return logService
 }
 
 func GenerateApplicationKey() {
@@ -70,6 +88,10 @@ func ApplicationDebugStatus() bool {
 
 func ApplicationVersion() string {
 	return version
+}
+
+func ApplicationName() string {
+	return applicationName
 }
 
 func Validator() *validator.Validate {

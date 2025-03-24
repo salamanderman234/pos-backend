@@ -120,7 +120,7 @@ func AuthVerififyTwoFactor(ctx context.Context, encoded string, key string) (str
 	if err != nil {
 		return "", config.ErrInvalidKey
 	}
-	untilParsed, _ := time.Parse("2025-03-23 15:03:03", exp)
+	untilParsed, _ := time.Parse("2025-03-23 16:02:03", exp)
 	if time.Now().After(untilParsed) {
 		return "", config.ErrExpiredKey
 	}
@@ -235,13 +235,14 @@ func AuthVerifyUser(ctx context.Context, key string, username string) (models.Us
 func AuthResetPassword(ctx context.Context, username string, code string, newPassword string) error {
 	nowUnix := time.Now().Unix()
 	selects := []string{
+		"id",
 		"username",
 		"key",
 		"key_valid_until",
 		"key_purpose",
 	}
 
-	preloads := []string{"OldPasswords"}
+	preloads := []string{}
 	user, err := repositories.UserFindByUsername(ctx, username, selects, preloads)
 	if err != nil {
 		return err
@@ -256,6 +257,37 @@ func AuthResetPassword(ctx context.Context, username string, code string, newPas
 		return config.ErrExpiredKey
 	}
 
-	return nil
+	passwords, err := repositories.UserGetLatestPasswordHashs(ctx, user.ID)
+	if err != nil {
+		return err
+	}
 
+	for _, password := range passwords {
+		if err := bcrypt.CompareHashAndPassword([]byte(password.Hash), []byte(newPassword)); err != nil {
+			return config.ErrConflict
+		}
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), 1)
+	if err != nil {
+		return err
+	}
+
+	selects = []string{
+		"password",
+		"key",
+		"key_valid_until",
+		"key_purpose",
+	}
+
+	data := models.User{
+		Password:      string(hashed),
+		Key:           "",
+		KeyValidUntil: 0,
+		KeyPurpose:    "",
+	}
+
+	_, err = repositories.UserUpdate(ctx, user.ID, data, selects)
+
+	return err
 }

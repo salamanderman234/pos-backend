@@ -43,7 +43,7 @@ type workerPool struct {
 func NewWorkerPool(workerNum int) *workerPool {
 	return &workerPool{
 		workerNum: workerNum,
-		jobChan:   make(chan Job),
+		jobChan:   make(chan Job, APP_WORKER_POOL_BUFFER_SIZE),
 		quitChan:  make(chan struct{}),
 	}
 }

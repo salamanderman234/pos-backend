@@ -35,3 +35,31 @@ func connectDB() {
 func Conn() *gorm.DB {
 	return connection
 }
+
+var logConnection *gorm.DB
+
+func getLogDsn() string {
+	host := viper.GetString("LOG_DB_HOST")
+	user := viper.GetString("LOG_DB_USER")
+	pass := viper.GetString("LOG_DB_PASS")
+	port := viper.GetString("LOG_DB_PORT")
+	name := viper.GetString("LOG_DB_NAME")
+
+	return fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		host, user, pass, name, port,
+	)
+}
+
+func logConnectDB() {
+	dsn := getLogDsn()
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	logConnection = db
+}
+
+func LogConn() *gorm.DB {
+	return logConnection
+}
