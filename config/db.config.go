@@ -1,15 +1,14 @@
 package config
 
 import (
-	"gorm.io/gorm"
-	"gorm.io/driver/postgres"
-	"github.com/spf13/viper"
 	"fmt"
+
+	"github.com/spf13/viper"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-
-var Connection *gorm.DB
-
+var connection *gorm.DB
 
 func getDsn() string {
 	host := viper.GetString("DB_HOST")
@@ -30,5 +29,9 @@ func connectDB() {
 	if err != nil {
 		panic(err)
 	}
-	Connection = db
+	connection = db
+}
+
+func Conn() *gorm.DB {
+	return connection
 }
