@@ -11,6 +11,8 @@ const (
 	AUTH_TWO_FACTOR_SEP = "|"
 	AUTH_TOKEN_ID_KEY   = "param"
 	AUTH_TOKEN_NAME_KEY = "name"
+	// session
+	SESSION_DEVICE_KEY = "device"
 	// job
 	JOB_SEND_MAIL_RETRY = 3
 	JOB_LOG_RETRY       = 10

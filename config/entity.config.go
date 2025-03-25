@@ -70,4 +70,8 @@ var (
 		Status:  http.StatusMethodNotAllowed,
 		Message: "Method not allowed",
 	}
+	ErrDeviceBanned = Response{
+		Status:  http.StatusLocked,
+		Message: "Your device has been banned",
+	}
 )

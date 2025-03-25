@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -121,4 +122,12 @@ func DecodeString(cip string, key []byte) (string, error) {
 	}
 
 	return string(plaintext), nil
+}
+
+func TranslateStruct(source any, target any) error {
+	jsonByte, err := json.Marshal(source)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(jsonByte, target)
 }
