@@ -66,4 +66,8 @@ var (
 		Status:  http.StatusUnsupportedMediaType,
 		Message: "Invalid mime type for file",
 	}
+	ErrMethodNotAllowed = Response{
+		Status:  http.StatusMethodNotAllowed,
+		Message: "Method not allowed",
+	}
 )

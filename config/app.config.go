@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/rand"
+	"fmt"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/microcosm-cc/bluemonday"
@@ -16,6 +17,7 @@ var debug bool
 var version string
 var applicationKey []byte
 var applicationName string
+var applicationPort string
 
 // mailer
 var mailer *gomail.Dialer
@@ -47,6 +49,7 @@ func StartSetup() {
 	debug = viper.GetBool("APP_DEBUG")
 	version = viper.GetString("APP_VERSION")
 	applicationName = viper.GetString("APP_NAME")
+	applicationPort = viper.GetString("APP_PORT")
 	// sanitizer
 	sanitizer = bluemonday.UGCPolicy()
 	// validator
@@ -92,6 +95,10 @@ func ApplicationVersion() string {
 
 func ApplicationName() string {
 	return applicationName
+}
+
+func ApplicationPort() string {
+	return fmt.Sprintf(":%s", applicationPort)
 }
 
 func Validator() *validator.Validate {
