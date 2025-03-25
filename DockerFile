@@ -1,0 +1,17 @@
+FROM golang:1.23.5
+
+COPY . /app/
+
+WORKDIR /app
+
+RUN mv .env .env.dev
+
+RUN mv .env.production .env
+
+RUN go build -o api .
+
+RUN chmod +x ./outsourcing-api
+
+EXPOSE 1323
+
+CMD ["./api"]
