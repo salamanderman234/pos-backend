@@ -74,4 +74,16 @@ var (
 		Status:  http.StatusLocked,
 		Message: "Your device has been banned",
 	}
+	ErrFailedPolicy = Response{
+		Status:  http.StatusForbidden,
+		Message: "You are not allowed to access this resource",
+	}
+	ErrUpgradeRequired = Response{
+		Status:  http.StatusUpgradeRequired,
+		Message: "You'll need to upgrade your account status first",
+	}
+	ErrTooManyRequest = Response{
+		Status:  http.StatusTooManyRequests,
+		Message: "Please wait to make another request",
+	}
 )

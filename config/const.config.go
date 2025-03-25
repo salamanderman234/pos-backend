@@ -13,10 +13,21 @@ const (
 	AUTH_TOKEN_NAME_KEY = "name"
 	// session
 	SESSION_DEVICE_KEY = "device"
+	SESSION_USER_KEY   = "user"
+	SESSION_IP_KEY     = "ip"
+	SESSION_TOKEN_KEY  = "token"
+	// header
+	HEADER_CSRF = "X-CSRF-TOKEN"
 	// job
 	JOB_SEND_MAIL_RETRY = 3
 	JOB_LOG_RETRY       = 10
 	// time
 	TIME_JWT_EXPIRE = 3 * 24 * time.Hour
 	TIME_TWO_FACTOR = 1 * time.Minute
+	TIME_VERIFY_KEY = 24 * time.Hour
+	TIME_RESET_KEY  = 30 * time.Minute
+	TIME_LIMIT_SEND = 1 * time.Minute
+	// cookie
+	COOKIE_VERIFY_LIMIT_COOKIE = "session_verify"
+	COOKIE_RESET_LIMIT_COOKIE  = "reset_header"
 )

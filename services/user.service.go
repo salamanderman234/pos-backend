@@ -17,6 +17,11 @@ func UserFindUser(ctx context.Context, id any, preloads []string, selects ...str
 	return user, err
 }
 
+func UserFindUserByUsername(ctx context.Context, username string, preloads []string, selects ...string) (models.User, error) {
+	user, err := repositories.UserFindByUsername(ctx, username, selects, preloads)
+	return user, err
+}
+
 func UserGenerateKey(ctx context.Context, id any, purpose config.UserKeyPurposeEnum, until time.Duration) (string, error) {
 	key := helpers.GenerateRandomString(6, helpers.NUMBER_CHARSET, helpers.UPPERCASE_CHARSET)
 	selects := []string{

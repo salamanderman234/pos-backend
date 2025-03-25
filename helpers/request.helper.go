@@ -1,7 +1,9 @@
 package helpers
 
 import (
+	"net/http"
 	"slices"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/salamanderman234/pos-backend/config"
@@ -59,4 +61,23 @@ func RequestValidateForm(target any) error {
 		return errs
 	}
 	return nil
+}
+
+func RequestVerifyLimitCookie(c echo.Context, cookieName string) error {
+	cookie, _ := c.Cookie(cookieName)
+	if cookie != nil {
+		return config.ErrTooManyRequest
+	}
+	return nil
+}
+
+func RequestGenerateLimitCookie(c echo.Context, cookieName string, limit time.Duration) {
+	cookie := new(http.Cookie)
+	cookie.Name = cookieName
+	cookie.Value = GenerateRandomString(16)
+	cookie.Expires = time.Now().Add(limit)
+	cookie.HttpOnly = true
+	cookie.Path = "/"
+
+	c.SetCookie(cookie)
 }

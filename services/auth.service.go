@@ -192,10 +192,10 @@ func AuthLogin(ctx context.Context, username string, password string) (models.Us
 	return user, false, token, nil
 }
 
-func AuthVerififyTwoFactor(ctx context.Context, encoded string, key string) (string, error) {
+func AuthVerififyTwoFactor(ctx context.Context, encoded string, key string) (models.User, string, error) {
 	username, validKey, exp, err := AuthDecodeTwoFactorString(encoded, true)
 	if err != nil {
-		return "", config.ErrInvalidKey
+		return models.User{}, "", config.ErrInvalidKey
 	}
 
 	selects := []string{
@@ -216,40 +216,40 @@ func AuthVerififyTwoFactor(ctx context.Context, encoded string, key string) (str
 	preloads := []string{"Notifications"}
 	user, err := repositories.UserFindByUsername(ctx, username, selects, preloads)
 	if err != nil {
-		return "", config.ErrInvalidKey
+		return models.User{}, "", config.ErrInvalidKey
 	}
 
 	if err := AuthCheckUserSuspendBanState(user); err != nil {
-		return "", err
+		return models.User{}, "", err
 	}
 	if !user.IsTwoFactorEnabled {
-		return "", config.ErrInvalidKey
+		return models.User{}, "", config.ErrInvalidKey
 	}
 	method := user.TwoFactorMethod
 	switch method {
 	case config.TwoFactorEnum_EMAIL:
 		untilParsed, _ := time.Parse("2025-03-23 16:02:03", exp)
 		if time.Now().After(untilParsed) {
-			return "", config.ErrExpiredKey
+			return models.User{}, "", config.ErrExpiredKey
 		}
 		if validKey != key {
-			return "", config.ErrInvalidKey
+			return models.User{}, "", config.ErrInvalidKey
 		}
 	case config.TwoFactorEnum_GA:
 		secret := user.Secret
 		if !totp.Validate(key, secret) {
-			return "", config.ErrInvalidKey
+			return models.User{}, "", config.ErrInvalidKey
 		}
 	default:
-		return "", config.ErrInvalidKey
+		return models.User{}, "", config.ErrInvalidKey
 	}
 
 	token, err := AuthGenerateToken(user)
 	if err != nil {
-		return "", config.ErrInvalidKey
+		return models.User{}, "", config.ErrInvalidKey
 	}
 
-	return token, nil
+	return user, token, nil
 }
 
 func AuthResendTwoFactor(ctx context.Context, encoded string) (models.User, string, string, error) {
@@ -309,7 +309,7 @@ func AuthVerifyUser(ctx context.Context, key string, username string) (models.Us
 	return repositories.UserUpdate(ctx, id, data, selects)
 }
 
-func AuthResetPassword(ctx context.Context, username string, code string, newPassword string) error {
+func AuthResetPassword(ctx context.Context, username string, code string, newPassword string) (models.User, error) {
 	nowUnix := time.Now().Unix()
 	selects := []string{
 		"id",
@@ -322,32 +322,32 @@ func AuthResetPassword(ctx context.Context, username string, code string, newPas
 	preloads := []string{}
 	user, err := repositories.UserFindByUsername(ctx, username, selects, preloads)
 	if err != nil {
-		return err
+		return models.User{}, err
 	}
 	if user.KeyPurpose != config.UserKeyPurposeEnum_RESET_PASSWORD {
-		return config.ErrInvalidKey
+		return models.User{}, config.ErrInvalidKey
 	}
 	if code != user.Key {
-		return config.ErrInvalidKey
+		return models.User{}, config.ErrInvalidKey
 	}
 	if nowUnix > user.KeyValidUntil {
-		return config.ErrExpiredKey
+		return models.User{}, config.ErrExpiredKey
 	}
 
 	passwords, err := repositories.UserGetLatestPasswordHashs(ctx, user.ID)
 	if err != nil {
-		return err
+		return models.User{}, err
 	}
 
 	for _, password := range passwords {
 		if err := bcrypt.CompareHashAndPassword([]byte(password.Hash), []byte(newPassword)); err != nil {
-			return config.ErrConflict
+			return models.User{}, config.ErrConflict
 		}
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), 1)
 	if err != nil {
-		return err
+		return models.User{}, err
 	}
 
 	selects = []string{
@@ -366,5 +366,5 @@ func AuthResetPassword(ctx context.Context, username string, code string, newPas
 
 	_, err = repositories.UserUpdate(ctx, user.ID, data, selects)
 
-	return err
+	return user, err
 }
