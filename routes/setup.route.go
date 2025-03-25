@@ -5,13 +5,28 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/salamanderman234/pos-backend/config"
 	"github.com/salamanderman234/pos-backend/helpers"
+	"github.com/salamanderman234/pos-backend/middlewares"
 )
 
 // middlewares that apply to api routes
 func routeAPIGetDefaultMiddleware() []echo.MiddlewareFunc {
-	return []echo.MiddlewareFunc{}
+	return []echo.MiddlewareFunc{
+		middleware.LoggerWithConfig(middleware.LoggerConfig{
+			Format: "method=${method}, uri=${uri}, status=${status}\n",
+		}),
+		middleware.RateLimiterWithConfig(middlewares.RateLimitconfig),
+		middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: []string{"*"},
+		}),
+		middleware.BodyLimit("10M"),
+		middlewares.UserAgentWhitelistMiddleware,
+		middlewares.IPWhitelistMiddleware,
+		middlewares.SessionRetrieveDeviceMiddleware,
+		middlewares.LogRequestMiddleware,
+	}
 }
 
 // middlwares that apply to web routes
