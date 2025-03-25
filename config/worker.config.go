@@ -7,9 +7,10 @@ import (
 
 type JobFunc func() error
 type Job struct {
-	Handler JobFunc
-	Config  JobConfig
-	Retry   int
+	Handler  JobFunc
+	Config   JobConfig
+	Retry    int
+	Callback func()
 }
 
 type ExecuteAt struct {
@@ -62,11 +63,13 @@ func (wp *workerPool) worker() {
 	for {
 		select {
 		case job := <-wp.jobChan:
-			if !job.Config.Once {
+			if job.Callback == nil {
 				go wp.executeJob(job.Handler, job.Retry, job.Config)
 				continue
 			}
-			wp.executeJob(job.Handler, job.Retry, job.Config)
+			if err := wp.executeJob(job.Handler, job.Retry, job.Config); err != nil {
+				job.Callback()
+			}
 		case <-wp.quitChan:
 			return
 		}
@@ -82,16 +85,18 @@ func (wp *workerPool) AddJob(job Job) {
 	wp.jobChan <- job
 }
 
-func (wp *workerPool) executeJob(job JobFunc, retry int, jobConfig JobConfig) {
+func (wp *workerPool) executeJob(job JobFunc, retry int, jobConfig JobConfig) error {
 	if jobConfig.Once {
+		err := error(nil)
 		for retry > 0 {
-			err := job()
+			err = job()
 			if err != nil {
 				retry--
 				continue
 			}
 			retry = 0
 		}
+		return err
 	} else if jobConfig.Every != 0 {
 		for {
 			retryHit := retry
@@ -156,4 +161,5 @@ func (wp *workerPool) executeJob(job JobFunc, retry int, jobConfig JobConfig) {
 			}
 		}
 	}
+	return nil
 }
