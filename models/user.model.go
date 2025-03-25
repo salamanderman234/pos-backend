@@ -33,6 +33,7 @@ type User struct {
 	LastChangePassword int64              `json:"last_change_password"`
 	Notifications      []Notification     `json:"notifications"`
 	Passwords          []UserPasswordHash `json:"passwords"`
+	Devices            []UserDevice       `json:"devices"`
 }
 
 type UserPasswordHash struct {
@@ -40,4 +41,15 @@ type UserPasswordHash struct {
 	UserID uint   `json:"user_id"`
 	Hash   string `json:"hash"`
 	Date   int64  `json:"date"`
+}
+
+type UserDevice struct {
+	gorm.Model
+	Device       string `json:"device"`
+	Type         string `json:"type"`
+	LastLogin    int64  `json:"last_login"`
+	LastActivity int64  `json:"last_activity"`
+	BannedAt     int64  `json:"banned_at"`
+	BanReason    string `json:"ban_reason"`
+	BannedBy     string `json:"banned_by"`
 }

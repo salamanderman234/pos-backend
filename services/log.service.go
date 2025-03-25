@@ -15,9 +15,25 @@ import (
 	"github.com/salamanderman234/pos-backend/repositories"
 )
 
-func LogDispatchFailure(userID uint, message string, detail string) {
+func LogDispatchLoginAttempt(userID uint, device string, ip string, isSuccess bool, twoFactor bool, token string) {
 	data := map[string]any{
-		"detail": detail,
+		"device":             device,
+		"ip":                 ip,
+		"is_success":         isSuccess,
+		"required_next_step": twoFactor && token == "",
+	}
+	jsonData, _ := json.Marshal(data)
+	message := fmt.Sprintf("Login attempt from %s(%s)", ip, device)
+	if twoFactor && token != "" {
+		message = fmt.Sprintf("Successfully verify two factor from %s(%s)", ip, device)
+	}
+	LogDispatch(userID, message, config.LogTypeEnum_FAILURE, string(jsonData))
+}
+
+func LogDispatchFailure(userID uint, message string, instance string) {
+	data := map[string]any{
+		"instance": instance,
+		"message":  message,
 	}
 	jsonData, _ := json.Marshal(data)
 	LogDispatch(userID, message, config.LogTypeEnum_FAILURE, string(jsonData))
@@ -27,7 +43,7 @@ func LogDispatchUserActivity(userID uint, message string) {
 	LogDispatch(userID, message, config.LogTypeEnum_USER_ACTIVITY, "")
 }
 
-func LogDispatchRequest(userID uint, message string, device string, ip string, method string, url string, status int) {
+func LogDispatchRequest(userID uint, device string, ip string, method string, url string, status int) {
 	data := map[string]any{
 		"device": device,
 		"ip":     ip,
@@ -36,15 +52,17 @@ func LogDispatchRequest(userID uint, message string, device string, ip string, m
 		"status": status,
 	}
 	jsonData, _ := json.Marshal(data)
+	message := fmt.Sprintf("New request from %s(%s) to (%s)%s", ip, device, method, url)
 	LogDispatch(userID, message, config.LogTypeEnum_REQUEST, string(jsonData))
 }
 
-func LogDispatchUserChangeLevel(userID uint, message string, old string, new string) {
+func LogDispatchUserChangeLevel(userID uint, old string, new string) {
 	data := map[string]any{
 		"old": old,
 		"new": new,
 	}
 	jsonData, _ := json.Marshal(data)
+	message := fmt.Sprintf("User #%d update their level from %s to %s", userID, old, new)
 	LogDispatch(userID, message, config.LogTypeEnum_UPDATE_LEVEL, string(jsonData))
 }
 

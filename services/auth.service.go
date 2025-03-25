@@ -14,6 +14,78 @@ import (
 	"github.com/salamanderman234/pos-backend/repositories"
 )
 
+func AuthRemoveBannedDevice(ctx context.Context, user models.User, userAgent string) error {
+	existed, err := repositories.UserGetMatchesDevice(ctx, user.ID, userAgent)
+	if err != nil {
+		return err
+	}
+	selects := []string{"banned_at", "ban_reason", "banned_by"}
+	data := models.UserDevice{
+		BannedAt:  0,
+		BanReason: "",
+		BannedBy:  "",
+	}
+	return repositories.UserUpdateDeviceInformation(ctx, existed.ID, data, selects)
+}
+
+func AuthCheckBannedDevice(ctx context.Context, user models.User, userAgent string) error {
+	for _, device := range user.Devices {
+		if device.Device == userAgent && device.BannedAt != 0 {
+			err := config.ErrDeviceBanned
+			err.Data = map[string]any{
+				"reason": device.BanReason,
+				"by":     device.BanReason,
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func AuthUpdateLastActivityDevice(ctx context.Context, user models.User, device string) error {
+	existed, err := repositories.UserGetMatchesDevice(ctx, user.ID, device)
+	if err != nil {
+		return err
+	}
+	selects := []string{"last_activity"}
+	data := models.UserDevice{
+		LastActivity: time.Now().Unix(),
+	}
+	return repositories.UserUpdateDeviceInformation(ctx, existed.ID, data, selects)
+}
+
+func AuthBanDevice(ctx context.Context, user models.User, device string, by string, reason string) error {
+	existed, err := repositories.UserGetMatchesDevice(ctx, user.ID, device)
+	if err != nil {
+		return err
+	}
+	selects := []string{"banned_at", "ban_reason", "banned_by"}
+	data := models.UserDevice{
+		BannedAt:  time.Now().Unix(),
+		BanReason: reason,
+		BannedBy:  by,
+	}
+	return repositories.UserUpdateDeviceInformation(ctx, existed.ID, data, selects)
+}
+
+func AuthDetectNewDevices(ctx context.Context, user models.User, device string) error {
+	id := user.ID
+	existed, err := repositories.UserGetMatchesDevice(ctx, id, device)
+	if err != nil {
+		data := models.UserDevice{
+			Device:    device,
+			Type:      "device",
+			LastLogin: time.Now().Unix(),
+		}
+		return repositories.UserAddNewDevice(ctx, data)
+	}
+	selects := []string{"last_login"}
+	data := models.UserDevice{
+		LastLogin: time.Now().Unix(),
+	}
+	return repositories.UserUpdateDeviceInformation(ctx, existed.ID, data, selects)
+}
+
 func AuthDecodeTwoFactorString(encoded string, usingTime bool) (string, string, string, error) {
 	plain, err := helpers.DecodeString(encoded, config.ApplicationKey())
 	if err != nil {
@@ -74,6 +146,7 @@ func AuthCheckUserSuspendBanState(user models.User) error {
 }
 
 func AuthLogin(ctx context.Context, username string, password string) (models.User, bool, string, error) {
+	userAgent := ctx.Value(config.SESSION_DEVICE_KEY).(string)
 	selects := []string{
 		"id",
 		"username",
@@ -100,6 +173,10 @@ func AuthLogin(ctx context.Context, username string, password string) (models.Us
 		return user, false, "", config.ErrInvalidCredentials
 	}
 
+	if err := AuthCheckBannedDevice(ctx, user, userAgent); err != nil {
+		return user, false, "", err
+	}
+
 	if err := AuthCheckUserSuspendBanState(user); err != nil {
 		return user, false, "", err
 	}
@@ -119,10 +196,6 @@ func AuthVerififyTwoFactor(ctx context.Context, encoded string, key string) (str
 	username, validKey, exp, err := AuthDecodeTwoFactorString(encoded, true)
 	if err != nil {
 		return "", config.ErrInvalidKey
-	}
-	untilParsed, _ := time.Parse("2025-03-23 16:02:03", exp)
-	if time.Now().After(untilParsed) {
-		return "", config.ErrExpiredKey
 	}
 
 	selects := []string{
@@ -155,6 +228,10 @@ func AuthVerififyTwoFactor(ctx context.Context, encoded string, key string) (str
 	method := user.TwoFactorMethod
 	switch method {
 	case config.TwoFactorEnum_EMAIL:
+		untilParsed, _ := time.Parse("2025-03-23 16:02:03", exp)
+		if time.Now().After(untilParsed) {
+			return "", config.ErrExpiredKey
+		}
 		if validKey != key {
 			return "", config.ErrInvalidKey
 		}
@@ -180,13 +257,13 @@ func AuthResendTwoFactor(ctx context.Context, encoded string) (models.User, stri
 	if err != nil {
 		return models.User{}, "", "", err
 	}
-	selects := []string{"username", "two_factor_method", "is_two_factor_enabled"}
+	selects := []string{"email", "username", "two_factor_method", "is_two_factor_enabled"}
 	preloads := []string{}
 	user, err := repositories.UserFindByUsername(ctx, username, selects, preloads)
 	if err != nil {
 		return user, "", "", config.ErrInvalidKey
 	}
-	if !user.IsTwoFactorEnabled {
+	if !user.IsTwoFactorEnabled || user.TwoFactorMethod != config.TwoFactorEnum_EMAIL {
 		return user, "", "", config.ErrInvalidKey
 	}
 	encodedResult, validKey, err := AuthEncodeTwoFactorString(username, time.Now().Add(config.TIME_TWO_FACTOR))
