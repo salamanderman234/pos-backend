@@ -1,11 +1,7 @@
-package models
+package response
 
-import (
-	"gorm.io/gorm"
-)
-
-type Notification struct {
-	gorm.Model
+type NotificationResponse struct {
+	ID      uint   `json:"id"`
 	UserID  uint   `json:"user_id"`
 	Type    string `json:"type"`
 	Message string `json:"message"`
