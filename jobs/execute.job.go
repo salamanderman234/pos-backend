@@ -1,6 +1,8 @@
 package jobs
 
-import "github.com/salamanderman234/pos-backend/config"
+import (
+	"github.com/salamanderman234/pos-backend/config"
+)
 
 var tasks = []config.Job{}
 

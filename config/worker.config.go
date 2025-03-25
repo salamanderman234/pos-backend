@@ -62,6 +62,10 @@ func (wp *workerPool) worker() {
 	for {
 		select {
 		case job := <-wp.jobChan:
+			if !job.Config.Once {
+				go wp.executeJob(job.Handler, job.Retry, job.Config)
+				continue
+			}
 			wp.executeJob(job.Handler, job.Retry, job.Config)
 		case <-wp.quitChan:
 			return
@@ -90,18 +94,22 @@ func (wp *workerPool) executeJob(job JobFunc, retry int, jobConfig JobConfig) {
 		}
 	} else if jobConfig.Every != 0 {
 		for {
-			for retry > 0 {
+			retryHit := retry
+			for retryHit > 0 {
 				err := job()
 				if err != nil {
-					retry--
+					retryHit--
 					continue
 				}
-				retry = 0
+				retryHit = 0
 			}
 			time.Sleep(jobConfig.Every)
 		}
 	} else if jobConfig.At != nil {
 		for {
+			year := jobConfig.At.Year
+			month := jobConfig.At.Month
+			day := jobConfig.At.Day
 			now := time.Now()
 			if jobConfig.At.Year == 0 {
 				jobConfig.At.Year = now.Year()
@@ -111,15 +119,6 @@ func (wp *workerPool) executeJob(job JobFunc, retry int, jobConfig JobConfig) {
 			}
 			if jobConfig.At.Day == 0 {
 				jobConfig.At.Day = now.Day()
-			}
-			if jobConfig.At.Hour == 0 {
-				jobConfig.At.Hour = now.Hour()
-			}
-			if jobConfig.At.Minute == 0 {
-				jobConfig.At.Minute = now.Minute()
-			}
-			if jobConfig.At.Second == 0 {
-				jobConfig.At.Second = now.Second()
 			}
 			// Set target time for today
 			targetTime := time.Date(
@@ -132,15 +131,28 @@ func (wp *workerPool) executeJob(job JobFunc, retry int, jobConfig JobConfig) {
 				0,
 				now.Location(),
 			)
+			if time.Now().After(targetTime) && year != 0 {
+				break
+			}
+			if time.Now().After(targetTime) {
+				if year == 0 && month != 0 {
+					targetTime = targetTime.AddDate(1, 0, 0)
+				} else if year == 0 && month == 0 && day != 0 {
+					targetTime = targetTime.AddDate(0, 1, 0)
+				} else {
+					targetTime = targetTime.AddDate(0, 0, 1)
+				}
+			}
 			until := time.Until(targetTime)
 			time.Sleep(until)
-			for retry > 0 {
+			retryHit := retry
+			for retryHit > 0 {
 				err := job()
 				if err != nil {
-					retry--
+					retryHit--
 					continue
 				}
-				retry = 0
+				retryHit = 0
 			}
 		}
 	}
